@@ -15,8 +15,8 @@ editor_options:
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
 # This loads 2 datasets: a=activities, con=conversations
-a = read.csv("activity_data.csv")
-con = read.csv("conversation_data.csv")
+a = read.csv("data/activity_data.csv")
+con = read.csv("data/conversation_data.csv")
 ```
 
 # Introduction
@@ -291,7 +291,7 @@ Add your summary here.
 
 **We want to give students an estimate of how much time this project will take. Please indicate how many hours you spent as a team to complete this project here.**
 
--   I spent [insert your time] hours.
+-   I spent \[insert your time\] hours.
 
 # Generative AI usage
 
