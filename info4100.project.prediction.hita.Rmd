@@ -223,7 +223,6 @@ head(example_features)
 ############################################### 
 ###### BEGIN INPUT: Engineer features #########
 ###############################################
-
 #days_to_complete
 prediction_df <- prediction_df |>
   mutate(
@@ -248,6 +247,29 @@ days_to_complete_feature <- prediction_df |>
   group_by(poster_id, name) |>
   summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop")
 
+#num_conversations_per_activity
+num_conversations <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  left_join(con_filtered, by = "poster_id") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  group_by(poster_id, name) |>
+  summarise(
+    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)]),
+    avg_student_msg_len = mean(nchar(message_text[system == FALSE]), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+#avg_msg_length
+avg_msg_length <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  left_join(con_filtered, by = "poster_id") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  group_by(poster_id, name) |>
+  summarise(
+    msg_len = round(mean(nchar(message_text[system == "false"]), na.rm = TRUE)),
+    .groups = "drop"
+  )
+
 #sentiment analysis
 sent_lex <- get_sentiments("bing")
 features = con |>
@@ -262,8 +284,6 @@ features = con |>
     summarise(
       sentiment_score = mean(sent_val, na.rm = TRUE)
     )
-
-
 
 ###############################################
 ###############################################
