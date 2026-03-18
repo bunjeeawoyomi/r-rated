@@ -1,6 +1,7 @@
 ---
 title: 'Group Project: Early Alert with LMS Data'
-author: '[[Milena Chan mwc96, Philan Tran pt337, Abolaji Awoyomi aoa26]]'
+author: '[[Milena Chan mwc96, Philan Tran pt337, Abolaji Awoyomi aoa26,
+Izzy Escalante iae23]]'
 subtitle: INFO 4100/5101 Learning Analytics
 output:
   pdf_document: default
