@@ -81,12 +81,28 @@ You can also plot the distribution of variables with histograms or boxplots.
 
 # Exploring Conversations data
 # add code here
+print("Conversations data")
+head(con)
+summary(con)
+print("# messages sent by AI vs student")
+table(con$system)
+names(con)
 
 # Exploring Activities data
 # add code here
+print("Activities data")
+head(a)
+summary(a)
+print("Completed activity")
+table(a$completed)
+print("Started activity")
+table(a$started)
+print("The assignments")
+unique(a$name)
 
 # Exploring connections between datasets
 # add code here
+n_distinct(intersect(con$poster_id, a$poster_id))
 
 ###############################################
 ###############################################
@@ -143,6 +159,12 @@ Be sure to use all students in the `con` dataset as the basis, not just those wh
 ###############################################
 
 # add code here
+a_clean <- a |>
+  filter(str_detect(name, "Reading Elaboration"),
+  !str_detect(name, "Week 2"),
+  !str_detect(name, "Week 8")
+  )
+
 
 ############################################### 
 ############################################### 
