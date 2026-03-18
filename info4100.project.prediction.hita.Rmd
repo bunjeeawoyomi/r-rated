@@ -16,7 +16,6 @@ editor_options:
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
 library(dplyr)
-library(tidytext)
 # This loads 2 datasets: a=activities, con=conversations
 a = read.csv("data/activity_data.csv")
 con = read.csv("data/conversation_data.csv")
@@ -180,8 +179,7 @@ prediction_df <- prediction_df |>
   mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
 
 
-con_filtered <- filter(con, activity_step_id!="null") 
-
+con_filtered <- filter(con, activity_step_id!="null")
 ############################################### 
 ############################################### 
 ```
@@ -202,14 +200,39 @@ You should try to create a lot more features, including complex ones, that can u
 secs_in_day = 60 * 60 * 24
 example_deadline = as.numeric(as.POSIXct("2025-03-01 05:00:00", tz = "UTC"))
 
+prediction_df <- prediction_df |>
+  mutate(
+    due_ts    = as.numeric(as.POSIXct(due_at, tz = "UTC")),
+    cutoff_ts = due_ts - secs_in_day
+  )
+
+completion_times <- a_clean |>
+  filter(completed == "true", !is.na(grade_created_at)) |>
+  mutate(
+    completed_due_ts = as.numeric(as.POSIXct(due_at, tz = "UTC")),
+    days_taken = (as.numeric(as.POSIXct(grade_created_at, tz = "UTC")) -
+                  as.numeric(as.POSIXct(available_at, tz = "UTC"))) / 
+      secs_in_day
+  ) |>
+  select(poster_id, completed_due_ts, days_taken)
+
+days_to_complete_feature <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  left_join(completion_times, by = "poster_id") |>
+  filter(completed_due_ts < cutoff_ts) |>
+  group_by(poster_id, name) |>
+  summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop")
+
 example_features = con %>% 
-    filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < example_deadline - secs_in_day) %>%
+    filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < example_deadline - 
+             secs_in_day) %>%
     mutate(
       msg_len = nchar(message_text)
     ) %>% 
     group_by(poster_id) %>%
     summarise(
-        num_chat_conversations = n_distinct(conversation_id[is.na(activity_step_id)]),
+        num_chat_conversations = n_distinct(
+          conversation_id[is.na(activity_step_id)]),
         avg_student_msg_len = mean(msg_len[system==FALSE])
     )
 
@@ -222,8 +245,6 @@ head(example_features)
 ############################################### 
 ###### BEGIN INPUT: Engineer features #########
 ###############################################
-
-# add code here
 #sentiment analysis
 sent_lex <- get_sentiments("bing")
 features = con |>
@@ -238,8 +259,6 @@ features = con |>
     summarise(
       sentiment_score = mean(sent_val, na.rm = TRUE)
     )
-
-
 
 ###############################################
 ###############################################
