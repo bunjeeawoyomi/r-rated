@@ -257,6 +257,22 @@ num_conversations <- prediction_df |>
     num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)])
   )
 
+#avg_msg_per_activity
+avg_msg_activity <- prediction_df |>
+select(poster_id, name, cutoff_ts) |>
+  left_join(con_filtered, by = "poster_id") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  group_by(poster_id, name, activity_step_id) |>
+  summarise(
+    msgs_per_activity = sum(system == "false"),
+    .groups = "drop"
+  ) |>
+  group_by(poster_id, name) |>
+  summarise(
+    avg_msgs_per_activity = round(mean(msgs_per_activity), 0),
+    .groups = "drop"
+  )
+
 #avg_msg_length
 avg_msg_length <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
