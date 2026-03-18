@@ -16,6 +16,7 @@ editor_options:
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
 library(dplyr)
+library(tidytext)
 # This loads 2 datasets: a=activities, con=conversations
 a = read.csv("data/activity_data.csv")
 con = read.csv("data/conversation_data.csv")
@@ -178,6 +179,7 @@ prediction_df <- prediction_df |>
       )
 
 con_filtered <- filter(con, activity_step_id!="null") 
+
 ############################################### 
 ############################################### 
 ```
@@ -220,6 +222,22 @@ head(example_features)
 ###############################################
 
 # add code here
+#sentiment analysis
+sent_lex <- get_sentiments("bing")
+features = con |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < example_deadline - secs_in_day) %>%
+  filter(system == FALSE) |>
+  unnest_tokens(word, message_text) |>
+  inner_join(sent_lex, by = "word") |>
+  mutate(
+    sent_val = ifelse(sentiment == "positive", 1, -1)
+  ) |>
+    group_by(poster_id) |>
+    summarise(
+      sentiment_score = mean(sent_val, na.rm = TRUE)
+    )
+
+
 
 ###############################################
 ###############################################
@@ -241,10 +259,16 @@ Take all the remaining data (earlier periods for prior weeks) and store them in 
 
 # Identify last due elaboration activity for testing
 # add code here
+week7_data <- prediction_df |>
+  filter(str_detect(name, "Week 7")) |>
+  pull(name) |>
+  unique()
 
 # Split the dataset into train and test based on the activity_ids or periods
-# test = 
-# train = 
+test = prediction_df |>
+  filter(name %in% week7_data)
+train = prediction_df |>
+  filter(!name %in% week7_data)
 
 ###############################################
 ###############################################
