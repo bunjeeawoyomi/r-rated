@@ -166,6 +166,16 @@ a_clean <- a |>
   !str_detect(name, "Week 8")
   )
 
+all_students <- con |>
+  distinct(poster_id)
+
+prediction_df <- cross_join(all_students, distinct(a_clean, name, due_at))
+
+prediction_df <- prediction_df |>
+  left_join(a_clean |>
+      distinct(poster_id, name, completed),
+      by = c("poster_id", "name")
+      )
 
 con_filtered <- filter(con, activity_step_id!="null") 
 ############################################### 
