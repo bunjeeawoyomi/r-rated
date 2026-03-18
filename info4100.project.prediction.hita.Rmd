@@ -15,6 +15,7 @@ editor_options:
 
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
+library(dplyr)
 # This loads 2 datasets: a=activities, con=conversations
 a = read.csv("data/activity_data.csv")
 con = read.csv("data/conversation_data.csv")
@@ -166,6 +167,7 @@ a_clean <- a |>
   )
 
 
+con_filtered <- filter(con, activity_step_id!="null") 
 ############################################### 
 ############################################### 
 ```
