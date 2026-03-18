@@ -15,6 +15,7 @@ editor_options:
 
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
+library(dplyr)
 # This loads 2 datasets: a=activities, con=conversations
 a = read.csv("data/activity_data.csv")
 con = read.csv("data/conversation_data.csv")
@@ -143,7 +144,7 @@ Be sure to use all students in the `con` dataset as the basis, not just those wh
 ###############################################
 
 # add code here
-
+con_filtered <- filter(con, activity_step_id!="null") 
 ############################################### 
 ############################################### 
 ```
