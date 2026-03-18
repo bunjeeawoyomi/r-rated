@@ -176,7 +176,9 @@ prediction_df <- prediction_df |>
   left_join(a_clean |>
       distinct(poster_id, name, completed),
       by = c("poster_id", "name")
-      )
+      ) |>
+  mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
+
 
 con_filtered <- filter(con, activity_step_id!="null") 
 
