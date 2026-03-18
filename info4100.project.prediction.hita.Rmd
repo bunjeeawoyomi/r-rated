@@ -191,7 +191,7 @@ example_features = con %>%
     mutate(
       msg_len = nchar(message_text)
     ) %>% 
-    group_by(student_id) %>%
+    group_by(poster_id) %>%
     summarise(
         num_chat_conversations = n_distinct(conversation_id[is.na(activity_step_id)]),
         avg_student_msg_len = mean(msg_len[system==FALSE])
