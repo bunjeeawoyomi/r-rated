@@ -254,9 +254,7 @@ num_conversations <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)]),
-    avg_student_msg_len = mean(nchar(message_text[system == FALSE]), na.rm = TRUE),
-    .groups = "drop"
+    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)])
   )
 
 #avg_msg_length
