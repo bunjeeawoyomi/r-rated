@@ -323,12 +323,14 @@ final_pred_df <- prediction_df |>
   left_join(avg_msg_activity, by = c("poster_id", "name")) |>
   left_join(avg_msg_length, by = c("poster_id", "name")) |>
   left_join(sent_analysis, by = c("poster_id", "name")) |>
+  left_join(num_ai_messages, by = c("poster_id", "name")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
     avg_msgs_per_activity = 0,
     msg_len = 0,
-    sentiment_score = 0
+    sentiment_score = 0,
+    num_ai_messages = 0
     )
   )
 
@@ -412,7 +414,8 @@ rf_model <- randomForest(
     num_chat_conversations +
     avg_msgs_per_activity +
     msg_len +
-    sentiment_score
+    sentiment_score +
+    num_ai_messages
     ,
   data = train,
   ntree = 300,
