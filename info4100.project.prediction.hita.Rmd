@@ -175,7 +175,7 @@ prediction_df <- cross_join(all_students, distinct(a_clean, name, due_at))
 
 prediction_df <- prediction_df |>
   left_join(a_clean |>
-      distinct(poster_id, name, completed),
+      distinct(poster_id, name, completed, started, activity_step_id),
       by = c("poster_id", "name")
       ) |>
   mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
