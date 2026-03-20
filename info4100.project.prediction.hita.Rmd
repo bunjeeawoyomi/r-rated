@@ -291,11 +291,11 @@ avg_msg_length <- prediction_df |>
 sent_lex <- get_sentiments("bing")
 sent_analysis <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
-  left_join(con, by = "poster_id", relationship = "many-to-many") |>
+  inner_join(con, by = "poster_id", relationship = "many-to-many") |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
-  filter(system == FALSE) |>
+  filter(system == "false") |>
   unnest_tokens(word, message_text) |>
-  left_join(sent_lex, by = "word") |>
+  inner_join(sent_lex, by = "word") |>
   mutate(
     sent_val = ifelse(sentiment == "positive", 1, -1)
   ) |>
@@ -400,7 +400,8 @@ rf_model <- randomForest(
     num_chat_conversations +
     avg_msgs_per_activity +
     msg_len +
-    sentiment_score,
+    sentiment_score
+    ,
   data = train,
   ntree = 100
 )
