@@ -16,6 +16,7 @@ editor_options:
 ```{r warning=FALSE, message=FALSE, echo=FALSE}
 library(tidyverse)
 library(dplyr)
+library(randomForest)
 library(tidytext)
 # This loads 2 datasets: a=activities, con=conversations
 a = read.csv("data/activity_data.csv")
@@ -242,7 +243,7 @@ completion_times <- a_clean |>
 
 days_to_complete_feature <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
-  left_join(completion_times, by = "poster_id") |>
+  left_join(completion_times, by = "poster_id", relationship = "many-to-many") |>
   filter(completed_due_ts < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop")
@@ -250,17 +251,18 @@ days_to_complete_feature <- prediction_df |>
 #num_conversations_per_activity
 num_conversations <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
-  left_join(con_filtered, by = "poster_id") |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)])
+    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)]),
+    .groups = "drop"
   )
 
 #avg_msg_per_activity
 avg_msg_activity <- prediction_df |>
 select(poster_id, name, cutoff_ts) |>
-  left_join(con_filtered, by = "poster_id") |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name, activity_step_id) |>
   summarise(
@@ -276,7 +278,7 @@ select(poster_id, name, cutoff_ts) |>
 #avg_msg_length
 avg_msg_length <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
-  left_join(con_filtered, by = "poster_id") |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
@@ -284,10 +286,13 @@ avg_msg_length <- prediction_df |>
     .groups = "drop"
   )
 
+
 #sentiment analysis
 sent_lex <- get_sentiments("bing")
-features = con |>
-  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < example_deadline - secs_in_day) %>%
+sent_analysis <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  left_join(con, by = "poster_id", relationship = "many-to-many") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   filter(system == FALSE) |>
   unnest_tokens(word, message_text) |>
   inner_join(sent_lex, by = "word") |>
@@ -296,8 +301,24 @@ features = con |>
   ) |>
     group_by(poster_id) |>
     summarise(
-      sentiment_score = mean(sent_val, na.rm = TRUE)
+      sentiment_score = mean(sent_val, na.rm = TRUE),
+      .groups = "drop"
     )
+
+final_pred_df <- prediction_df |>
+  left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
+  left_join(num_conversations, by = c("poster_id", "name")) |>
+  left_join(avg_msg_activity, by = c("poster_id", "name")) |>
+  left_join(avg_msg_length, by = c("poster_id", "name")) |>
+  left_join(sent_analysis, by = c("poster_id")) |>
+  replace_na(list(
+    days_to_complete = 0,
+    num_chat_conversations = 0,
+    avg_msgs_per_activity = 0,
+    msg_len = 0,
+    sentiment_score = 0
+    )
+  )
 
 ###############################################
 ###############################################
@@ -325,9 +346,9 @@ week7_data <- prediction_df |>
   unique()
 
 # Split the dataset into train and test based on the activity_ids or periods
-test = prediction_df |>
+test = final_pred_df |>
   filter(name %in% week7_data)
-train = prediction_df |>
+train = final_pred_df |>
   filter(!name %in% week7_data)
 
 ###############################################
@@ -351,16 +372,75 @@ Report your F1 scores on the training data below (don't forget this!).
 
 # Fit  model to training data
 # add code here
+set.seed(4100)
+# baseline
+baseline <- glm(
+  data = train,
+  missed ~ num_chat_conversations + avg_msgs_per_activity,
+  family = "binomial"
+)
+
+# logistic regression
+log_reg_model <- glm(
+  data = train,
+  missed ~
+    days_to_complete +
+    num_chat_conversations +
+    avg_msgs_per_activity +
+    msg_len +
+    sentiment_score
+    ,
+  family = "binomial"
+)
+
+rf_model <- randomForest(
+  as.factor(missed) ~
+    days_to_complete +
+    num_chat_conversations +
+    avg_msgs_per_activity +
+    msg_len +
+    sentiment_score,
+  data = train,
+  ntree = 100
+)
 
 # Get predictions
 # add code here
+threshold <- 0.3
+base_probs <- predict(baseline, type = "response")
+base_preds <- ifelse(base_probs > threshold, 1, 0)
+
+log_reg_probs <- predict(log_reg_model, type = "response")
+log_reg_preds <- ifelse(log_reg_probs > threshold, 1, 0)
+
+rf_probs <- predict(rf_model, type = "prob")[,2]
+rf_preds <- ifelse(rf_probs > threshold, 1, 0)
 
 # Compute accuracy, recall, precision, and F1
 # add code here
-F1 = 2 / (1/recall + 1/precision)
+compute_f1 <- function(preds, actual) {
+  TP <- sum(preds == 1 & actual == 1)
+  FP <- sum(preds == 1 & actual == 0)
+  FN <- sum(preds == 0 & actual == 1)
+  TN <- sum(preds == 0 & actual == 0)
+
+  accuracy <- (TP + TN)/(TP + TN + FP + FN)
+  precision <- TP/(TP + FP)
+  recall <- TP / (TP + FN)
+
+  F1 = 2 / (1/recall + 1/precision)
+  return(F1 = F1)
+}
+
   
 # Training F1 score is ...
-F1
+baseline_f1 <- compute_f1(base_preds, train$missed)
+log_reg_f1 <- compute_f1(log_reg_preds, train$missed)
+rf_f1 <- compute_f1(rf_preds, train$missed)
+
+baseline_f1
+log_reg_f1
+rf_f1
 
 ###############################################
 ###############################################
