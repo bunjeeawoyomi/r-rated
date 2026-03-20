@@ -175,7 +175,7 @@ prediction_df <- cross_join(all_students, distinct(a_clean, name, due_at))
 
 prediction_df <- prediction_df |>
   left_join(a_clean |>
-      distinct(poster_id, name, completed),
+      distinct(poster_id, name, completed, started, activity_step_id),
       by = c("poster_id", "name")
       ) |>
   mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
@@ -304,18 +304,43 @@ sent_analysis <- prediction_df |>
       .groups = "drop"
     )
 
+#AI messages
+num_ai_messages <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  filter(system == "true") |> # Focus on AI messages
+  group_by(poster_id, name) |>
+  summarise(
+    num_ai_messages = n(), # Count the number of AI messages
+    .groups = "drop"
+  )
+
+#num question marks in convo
+num_question_marks <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  group_by(poster_id, name) |>
+  summarise(
+    num_question_marks = sum(nchar(str_count(message_text,"?"))),
+    .groups = "drop"
+  )
+
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
   left_join(avg_msg_activity, by = c("poster_id", "name")) |>
   left_join(avg_msg_length, by = c("poster_id", "name")) |>
   left_join(sent_analysis, by = c("poster_id", "name")) |>
+  left_join(num_ai_messages, by = c("poster_id", "name")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
     avg_msgs_per_activity = 0,
     msg_len = 0,
-    sentiment_score = 0
+    sentiment_score = 0,
+    num_ai_messages = 0
     )
   )
 
@@ -399,15 +424,18 @@ rf_model <- randomForest(
     num_chat_conversations +
     avg_msgs_per_activity +
     msg_len +
-    sentiment_score
+    sentiment_score +
+    num_ai_messages
     ,
   data = train,
-  ntree = 100
+  ntree = 300,
+  mtry = 3,
+  classwt = c("0" = 1, "1" = 2.7)
 )
 
 # Get predictions
 # add code here
-threshold <- 0.3
+threshold <- 0.5
 base_probs <- predict(baseline, type = "response")
 base_preds <- ifelse(base_probs > threshold, 1, 0)
 
@@ -442,6 +470,7 @@ rf_f1 <- compute_f1(rf_preds, train$missed)
 baseline_f1
 log_reg_f1
 rf_f1
+importance(rf_model)
 
 ###############################################
 ###############################################
