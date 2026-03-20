@@ -415,12 +415,14 @@ rf_model <- randomForest(
     sentiment_score
     ,
   data = train,
-  ntree = 100
+  ntree = 300,
+  mtry = 3,
+  classwt = c("0" = 1, "1" = 2.7)
 )
 
 # Get predictions
 # add code here
-threshold <- 0.3
+threshold <- 0.5
 base_probs <- predict(baseline, type = "response")
 base_preds <- ifelse(base_probs > threshold, 1, 0)
 
@@ -455,6 +457,7 @@ rf_f1 <- compute_f1(rf_preds, train$missed)
 baseline_f1
 log_reg_f1
 rf_f1
+importance(rf_model)
 
 ###############################################
 ###############################################
