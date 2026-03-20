@@ -317,6 +317,17 @@ num_ai_messages <- prediction_df |>
     .groups = "drop"
   )
 
+#num question marks in convo
+num_question_marks <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  group_by(poster_id, name) |>
+  summarise(
+    num_question_marks = sum(nchar(str_count(message_text,"?"))),
+    .groups = "drop"
+  )
+
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
