@@ -305,6 +305,18 @@ sent_analysis <- prediction_df |>
       .groups = "drop"
     )
 
+#AI messages
+num_ai_messages <- prediction_df |>
+  select(poster_id, name, cutoff_ts) |>
+  inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
+  filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
+  filter(system == "true") |> # Focus on AI messages
+  group_by(poster_id, name) |>
+  summarise(
+    num_ai_messages = n(), # Count the number of AI messages
+    .groups = "drop"
+  )
+
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
