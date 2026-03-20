@@ -295,11 +295,11 @@ sent_analysis <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   filter(system == FALSE) |>
   unnest_tokens(word, message_text) |>
-  inner_join(sent_lex, by = "word") |>
+  left_join(sent_lex, by = "word") |>
   mutate(
     sent_val = ifelse(sentiment == "positive", 1, -1)
   ) |>
-    group_by(poster_id) |>
+    group_by(poster_id, name) |>
     summarise(
       sentiment_score = mean(sent_val, na.rm = TRUE),
       .groups = "drop"
@@ -310,7 +310,7 @@ final_pred_df <- prediction_df |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
   left_join(avg_msg_activity, by = c("poster_id", "name")) |>
   left_join(avg_msg_length, by = c("poster_id", "name")) |>
-  left_join(sent_analysis, by = c("poster_id")) |>
+  left_join(sent_analysis, by = c("poster_id", "name")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
@@ -372,6 +372,7 @@ Report your F1 scores on the training data below (don't forget this!).
 
 # Fit  model to training data
 # add code here
+
 set.seed(4100)
 # baseline
 baseline <- glm(
