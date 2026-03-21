@@ -426,7 +426,6 @@ log_reg_model <- glm(
     num_chat_conversations +
     avg_msgs_per_activity +
     msg_len +
-    sentiment_score
     sentiment_score +
     num_ai_messages
     ,
@@ -441,7 +440,6 @@ rf_model <- randomForest(
     msg_len +
     sentiment_score +
     num_ai_messages
-    num_ai_messages 
     ,
   data = train,
   ntree = 300,
