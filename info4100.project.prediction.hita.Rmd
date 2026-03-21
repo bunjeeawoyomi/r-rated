@@ -334,8 +334,6 @@ num_question_marks <- prediction_df |>
 prev_missed <- prediction_df |>
   group_by(poster_id) |>
   mutate(
-    # cumulative sum of misses, but subtracting the current row 
-    # so we only see PAST misses.
     cumulative_missed = cumsum(missed) - missed
   ) |>
   ungroup() |>
