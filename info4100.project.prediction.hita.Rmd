@@ -244,7 +244,9 @@ completion_times <- a_clean |>
 
 days_to_complete_feature <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
-  left_join(completion_times, by = "poster_id", relationship = "many-to-many") |>
+  left_join(
+    completion_times, by = "poster_id", relationship = "many-to-many"
+  ) |>
   filter(completed_due_ts < cutoff_ts, name.x != name.y) |>
   group_by(poster_id, name.x) |>
   summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop") |>
@@ -257,7 +259,9 @@ num_conversations <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-    num_chat_conversations = n_distinct(conversation_id[!is.na(activity_step_id)]),
+    num_chat_conversations = n_distinct(
+      conversation_id[!is.na(activity_step_id)]
+    ),
     .groups = "drop"
   )
 
@@ -284,7 +288,8 @@ avg_msg_length <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-    msg_len = round(mean(nchar(message_text[system == "false"]), na.rm = TRUE)),
+    msg_len = round(mean(nchar(message_text[system == "false"]),
+                         na.rm = TRUE)),
     .groups = "drop"
   )
 
@@ -328,7 +333,6 @@ num_question_marks <- prediction_df |>
 
 
 #amount of times a student has missed an assignment
-
 prev_missed <- prediction_df |>
   group_by(poster_id) |>
   mutate(
@@ -532,13 +536,34 @@ Write your report answering the above questions here:
 
 %######## BEGIN INPUT: Summarize findings \############
 
-Based on our prediction model and feature engineering, we would(n't) recommend that our supervisor implement an early warning system to flag students at risk of missing a Reading Elaboration Assignment. 
+Based on our prediction model and feature engineering, we would cautiously 
+recommend that our supervisor consider implementing an early warning system to 
+flag students at risk of missing a Reading Elaboration Assignment, with the 
+understanding that the system has meaningful limitations that should be 
+addressed before implementation.
 
-Using the HiTA activity and conversation data, our team examined the different columns/data that could identify students missing a deadline up to 24 hours before the due date. Some key features we built were number of messages sent, average days taken to complete an assignment, number of questions asked via chat, how many previous assignments the student has missed, a sentiment analysis to distinguish the different types of conversation, length of messages, and number of AI messages. With these features, we created a train and test data set to see how they perform against a Baseline and Random Forest model.
+Using the HiTA activity and conversation data, our team identified features 
+available up to 24 hours before each due date. Some key features included 
+number of chat conversations, average student message length, number of 
+questions asked via general chat, sentiment score, and average days taken 
+to complete prior assignments. We created our train/test split, testing on 
+Week 7, to simulate model performance in early warning.
 
-Based on our training data, the Random Forest model was the most successful at predicting students who may miss the assignment due date. With a f1 score of 0.9198 (approximately 92%), our model demonstrates that it is reliable at detecting missed cases while maintaining low false positives and negative cases. We found that number of chat conversations (Gini: 130.89), message length (109.68), and number of AI messages (91.16) had the most impact on the Random Forest decision-making. When evaluated against our testing data, the Random Forest model still yielded the best result with a f1 score of [insert]. The features that had the most impact were [insert here with score].  
+Our Random Forest Model outperformed the baseline(train F1: 0.504) with a 
+train F1 score of 0.921. The most influential features were the number of 
+chat conversations (Gini: 166.69), message length (Gini: 126.14), and number 
+of AI messages (Gini: 98.41), suggesting that overall engagement quantity is 
+more predictive than quality. Based on our test data, the Random Forest 
+achieved an F1 of 0.607, with precision and recall both at 0.607 and a 
+specificity of 0.948. Our model treats both error types equally while our 
+high specificity means the model rarely flags students who are on track. 
+However, the large gap between training F1 (0.921) and test F1 (0.607) 
+reveals overfitting, unable to generalize patterns for Week7 specifically.
 
-Some limitations that our team identified was the need for more LMS data as the dataset only contained 3 Reading Elaboration Activities that were usable as it had both the created and due date. Additionally new features will need to be added to ensure that the system operates as efficiently as possible and can adapt to changes such as new students joining the course in future semesters. 
+Some limitations that our team identified included the small data set size, 
+since there were only three usable activities. Future improvements should 
+prioritize incorporating activity-specific features to increase our recall 
+as much as possible to catch as many at-risk students as possible earlier.
 
 %###############################################
 
@@ -546,14 +571,14 @@ Some limitations that our team identified was the need for more LMS data as the 
 
 **We want to give students an estimate of how much time this project will take. Please indicate how many hours you spent as a team to complete this project here.**
 
--   I spent \[insert your time\] hours.
+-   As a team, we spent \[12\] hours.
 
 # Generative AI usage
 
 **As stated in the course syllabus, using generative AI is allowed to help you as you complete this project. We are interested in how it is being used and whether it is helpful for you.**
 
--   How much did you use generative AI (e.g., not at all, some, most, or all the questions) and which one did you use?
--   If you used generative AI, how did you use it and was it helpful?
+-   We used HiTA for a lot of clarifying questions about the assignment and guidance on next steps in the project. One member also used Claude for more in-depth technical clarification on some of the methods and how they worked(arguments with predictive models, debugging of features, error clarification)
+How much did you use generative AI (e.g., not at all, some, most, or all the questions) and which one did you use?
 
 # Submit Project
 
