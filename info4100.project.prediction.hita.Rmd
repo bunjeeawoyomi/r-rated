@@ -180,6 +180,7 @@ prediction_df <- prediction_df |>
       ) |>
   mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
 
+#not_started = if_else(is.na(started) | started == "false", 1, 0)
 
 con_filtered <- filter(con, activity_step_id!="null")
 ############################################### 
@@ -323,9 +324,24 @@ num_question_marks <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
+<<<<<<< HEAD
     num_question_marks = sum(nchar(str_count(message_text,"\\?"))),
+=======
+    num_question_marks = sum(str_count(message_text,"\\?")),
+>>>>>>> 981927ec587e63b2f0663f0fed6f8f70e6f837ed
     .groups = "drop"
   )
+
+
+#amount of times a student has missed an assignment
+
+prev_missed <- prediction_df |>
+  group_by(poster_id) |>
+  mutate(
+    cumulative_missed = cumsum(missed) - missed
+  ) |>
+  ungroup() |>
+  select(poster_id, cumulative_missed)
 
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
@@ -334,6 +350,8 @@ final_pred_df <- prediction_df |>
   left_join(avg_msg_length, by = c("poster_id", "name")) |>
   left_join(sent_analysis, by = c("poster_id", "name")) |>
   left_join(num_ai_messages, by = c("poster_id", "name")) |>
+  left_join(num_question_marks, by = c("poster_id", "name")) |>
+  left_join(prev_missed, by = ("poster_id")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
@@ -341,6 +359,8 @@ final_pred_df <- prediction_df |>
     msg_len = 0,
     sentiment_score = 0,
     num_ai_messages = 0
+    num_ai_messages = 0,
+    num_question_marks = 0
     )
   )
 
@@ -414,6 +434,8 @@ log_reg_model <- glm(
     avg_msgs_per_activity +
     msg_len +
     sentiment_score
+    sentiment_score +
+    num_ai_messages
     ,
   family = "binomial"
 )
@@ -426,6 +448,7 @@ rf_model <- randomForest(
     msg_len +
     sentiment_score +
     num_ai_messages
+    num_ai_messages 
     ,
   data = train,
   ntree = 300,
