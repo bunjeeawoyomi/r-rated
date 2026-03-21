@@ -415,23 +415,8 @@ set.seed(4100)
 baseline <- glm(
   data = train,
   missed ~ num_chat_conversations + avg_msgs_per_activity,
-  family = "binomial"
-)
-
-# logistic regression
-log_reg_model <- glm(
-  data = train,
-  missed ~
-    days_to_complete +
-    num_chat_conversations +
-    avg_msgs_per_activity +
-    msg_len +
-    sentiment_score +
-    num_ai_messages +
-    total_question_marks +
-    cumulative_missed
-    ,
-  family = "binomial"
+  family = "binomial",
+  na.action = na.exclude
 )
 
 rf_model <- randomForest(
@@ -455,9 +440,6 @@ threshold <- 0.5
 base_probs <- predict(baseline, type = "response")
 base_preds <- ifelse(base_probs > threshold, 1, 0)
 
-log_reg_probs <- predict(log_reg_model, type = "response")
-log_reg_preds <- ifelse(log_reg_probs > threshold, 1, 0)
-
 rf_probs <- predict(rf_model, type = "prob")[,2]
 rf_preds <- ifelse(rf_probs > threshold, 1, 0)
 
@@ -480,11 +462,9 @@ compute_f1 <- function(preds, actual) {
   
 # Training F1 score is ...
 baseline_f1 <- compute_f1(base_preds, train$missed)
-log_reg_f1 <- compute_f1(log_reg_preds, train$missed)
 rf_f1 <- compute_f1(rf_preds, train$missed)
 
 baseline_f1
-log_reg_f1
 rf_f1
 importance(rf_model)
 
