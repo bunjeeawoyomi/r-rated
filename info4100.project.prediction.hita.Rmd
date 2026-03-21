@@ -428,8 +428,7 @@ log_reg_model <- glm(
     avg_msgs_per_activity +
     msg_len +
     sentiment_score +
-    num_ai_messages +
-    num_question_marks
+    num_ai_messages
     ,
   family = "binomial"
 )
