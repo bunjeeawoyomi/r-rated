@@ -310,12 +310,9 @@ num_ai_messages <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
   inner_join(con_filtered, by = "poster_id", relationship = "many-to-many") |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
-  filter(system == "true") |> # Focus on AI messages
+  filter(system == "true") |> 
   group_by(poster_id, name) |>
-  summarise(
-    num_ai_messages = n(), # Count the number of AI messages
-    .groups = "drop"
-  )
+  summarise(num_ai_messages = n(), .groups = "drop")
 
 #num question marks in convo
 num_question_marks <- prediction_df |>
@@ -324,11 +321,7 @@ num_question_marks <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-<<<<<<< HEAD
-    num_question_marks = sum(nchar(str_count(message_text,"\\?"))),
-=======
-    num_question_marks = sum(str_count(message_text,"\\?")),
->>>>>>> 981927ec587e63b2f0663f0fed6f8f70e6f837ed
+    total_question_marks = sum(nchar(str_count(message_text,"\\?"))),
     .groups = "drop"
   )
 
@@ -358,9 +351,9 @@ final_pred_df <- prediction_df |>
     avg_msgs_per_activity = 0,
     msg_len = 0,
     sentiment_score = 0,
-    num_ai_messages = 0
     num_ai_messages = 0,
-    num_question_marks = 0
+    num_question_marks = 0,
+    prev_missed = 0
     )
   )
 
