@@ -240,14 +240,15 @@ completion_times <- a_clean |>
                   as.numeric(as.POSIXct(available_at, tz = "UTC"))) / 
       secs_in_day
   ) |>
-  select(poster_id, completed_due_ts, days_taken)
+  select(poster_id, name, completed_due_ts, days_taken)
 
 days_to_complete_feature <- prediction_df |>
   select(poster_id, name, cutoff_ts) |>
   left_join(completion_times, by = "poster_id", relationship = "many-to-many") |>
-  filter(completed_due_ts < cutoff_ts) |>
-  group_by(poster_id, name) |>
-  summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop")
+  filter(completed_due_ts < cutoff_ts, name.x != name.y) |>
+  group_by(poster_id, name.x) |>
+  summarise(days_to_complete = round(mean(days_taken), 2), .groups = "drop") |>
+  rename(name = name.x)
 
 #num_conversations_per_activity
 num_conversations <- prediction_df |>
@@ -336,6 +337,8 @@ prev_missed <- prediction_df |>
   ungroup() |>
   select(poster_id, cumulative_missed)
 
+
+# Join back into prediction_df
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
@@ -354,8 +357,7 @@ final_pred_df <- prediction_df |>
     num_ai_messages = 0,
     num_question_marks = 0,
     prev_missed = 0
-    )
-  )
+  ))
 
 ###############################################
 ###############################################
@@ -410,7 +412,7 @@ Report your F1 scores on the training data below (don't forget this!).
 # Fit  model to training data
 # add code here
 
-set.seed(4100)
+
 # baseline
 baseline <- glm(
   data = train,
@@ -419,19 +421,18 @@ baseline <- glm(
   na.action = na.exclude
 )
 
+set.seed(4100)
 rf_model <- randomForest(
   as.factor(missed) ~
     days_to_complete +
     num_chat_conversations +
-    avg_msgs_per_activity +
     msg_len +
     sentiment_score +
-    num_ai_messages
-    ,
+    num_ai_messages,
   data = train,
   ntree = 300,
   mtry = 3,
-  classwt = c("0" = 1, "1" = 2.7)
+  classwt = c("0" = 1, "1" = 2.5)
 )
 
 # Get predictions
@@ -459,14 +460,16 @@ compute_f1 <- function(preds, actual) {
   return(F1 = F1)
 }
 
-  
 # Training F1 score is ...
 baseline_f1 <- compute_f1(base_preds, train$missed)
 rf_f1 <- compute_f1(rf_preds, train$missed)
 
-baseline_f1
-rf_f1
+
+cat("Baseline Train F1:", baseline_f1, "\n")
+cat("RF Train F1:", rf_f1, "\n")
+
 importance(rf_model)
+
 
 ###############################################
 ###############################################
@@ -484,15 +487,36 @@ Typically, you would only do this once at the very end, but for this project it 
 
 # Make predictions on the test dataset
 # add code here
+rf_probs_test <- predict(rf_model, newdata = test, type = "prob")[,2]
+rf_preds_test <- ifelse(rf_probs_test > threshold, 1, 0)
 
 # Compute F1 and at least two additional metrics
 # add code here
-F1 = 2 / (1/recall + 1/precision)
-#additional metics...
+TP <- sum(rf_preds_test == 1 & test$missed == 1, na.rm = TRUE)
+FP <- sum(rf_preds_test == 1 & test$missed == 0, na.rm = TRUE)
+FN <- sum(rf_preds_test == 0 & test$missed == 1, na.rm = TRUE)
+TN <- sum(rf_preds_test == 0 & test$missed == 0, na.rm = TRUE)
+
+#additional metrics...
+precision <- TP / (TP + FP)
+recall    <- TP / (TP + FN)
+accuracy  <- (TP + TN) / (TP + TN + FP + FN)
+specificity <- TN / (TN + FP)
+
+
 
 # Testing F1 score is ...
-F1
-#additional metics...
+rf_f1_test <- compute_f1(rf_preds_test, test$missed)
+
+cat("RF Test F1:" ,rf_f1_test, "\n")
+#additional metrics...
+cat("Accuracy:" ,accuracy, "\n")
+cat("Precision:" ,precision, "\n")
+cat("Recall:" ,recall, "\n")
+cat("Specificity:" ,specificity, "\n")
+
+
+
 
 ###############################################
 ###############################################
