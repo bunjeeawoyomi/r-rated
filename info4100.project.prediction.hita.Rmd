@@ -287,7 +287,6 @@ avg_msg_length <- prediction_df |>
     .groups = "drop"
   )
 
-
 #sentiment analysis
 sent_lex <- get_sentiments("bing")
 sent_analysis <- prediction_df |>
