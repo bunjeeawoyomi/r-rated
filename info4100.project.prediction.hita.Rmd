@@ -329,14 +329,20 @@ num_question_marks <- prediction_df |>
   )
 
 #amount of times a student has missed an assignment
+#prev_missed <- prediction_df |>
+  #group_by(poster_id) |>
+  #mutate(
+    #cumulative_missed = as.numeric(cumsum(missed) - missed)
+  #) |>
+  #ungroup() |>
+  #select(poster_id, name, cumulative_missed)
 
-prev_missed <- prediction_df |>
+prediction_df <- prediction_df |>
   group_by(poster_id) |>
   mutate(
-    cumulative_missed = cumsum(missed) - missed
+    prev_missed = cumsum(missed) - missed
   ) |>
-  ungroup() |>
-  select(poster_id, cumulative_missed)
+  ungroup()
   
 
 final_pred_df <- prediction_df |>
@@ -347,14 +353,14 @@ final_pred_df <- prediction_df |>
   left_join(sent_analysis, by = c("poster_id", "name")) |>
   left_join(num_ai_messages, by = c("poster_id", "name")) |>
   left_join(num_question_marks, by = c("poster_id", "name")) |>
-  left_join(prev_missed, by = ("poster_id")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
     avg_msgs_per_activity = 0,
     msg_len = 0,
     sentiment_score = 0,
-    num_ai_messages = 0
+    num_ai_messages = 0,
+    num_question_marks = 0
     )
   )
 
@@ -428,8 +434,8 @@ log_reg_model <- glm(
     avg_msgs_per_activity +
     msg_len +
     sentiment_score +
-    num_ai_messages
-    ,
+    num_ai_messages +
+    num_question_marks,
   family = "binomial"
 )
 
@@ -440,8 +446,8 @@ rf_model <- randomForest(
     avg_msgs_per_activity +
     msg_len +
     sentiment_score +
-    num_ai_messages 
-    ,
+    num_ai_messages +
+    num_question_marks,
   data = train,
   ntree = 300,
   mtry = 3,
