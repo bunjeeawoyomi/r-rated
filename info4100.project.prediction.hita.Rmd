@@ -324,7 +324,7 @@ num_question_marks <- prediction_df |>
   filter(as.numeric(as.POSIXct(created_at, tz = "UTC")) < cutoff_ts) |>
   group_by(poster_id, name) |>
   summarise(
-    num_question_marks = sum(nchar(str_count(message_text,"?"))),
+    num_question_marks = sum(str_count(message_text,"\\?")),
     .groups = "drop"
   )
 
