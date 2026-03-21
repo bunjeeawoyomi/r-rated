@@ -180,6 +180,7 @@ prediction_df <- prediction_df |>
       ) |>
   mutate(missed = if_else(is.na(completed) | completed == "false", 1, 0))
 
+#not_started = if_else(is.na(started) | started == "false", 1, 0)
 
 con_filtered <- filter(con, activity_step_id!="null")
 ############################################### 
@@ -328,6 +329,19 @@ num_question_marks <- prediction_df |>
     .groups = "drop"
   )
 
+#amount of times a student has missed an assignment
+
+prev_missed <- prediction_df |>
+  group_by(poster_id) |>
+  mutate(
+    # cumulative sum of misses, but subtracting the current row 
+    # so we only see PAST misses.
+    cumulative_missed = cumsum(missed) - missed
+  ) |>
+  ungroup() |>
+  select(poster_id, cumulative_missed)
+  
+
 final_pred_df <- prediction_df |>
   left_join(days_to_complete_feature, by = c("poster_id", "name")) |>
   left_join(num_conversations, by = c("poster_id", "name")) |>
@@ -335,6 +349,7 @@ final_pred_df <- prediction_df |>
   left_join(avg_msg_length, by = c("poster_id", "name")) |>
   left_join(sent_analysis, by = c("poster_id", "name")) |>
   left_join(num_ai_messages, by = c("poster_id", "name")) |>
+  left_join(prev_missed, by = ("poster_id")) |>
   replace_na(list(
     days_to_complete = 0,
     num_chat_conversations = 0,
